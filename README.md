@@ -1,343 +1,228 @@
-# Nexus (Guardian AI)
+# Guardian AI (Nexus)
 
-Nexus is an Android-first Flutter application backed by Firebase Realtime Database. It is designed to help users build **daily discipline**, track **health/steps**, and follow **AI-assisted routines** via a structured “Daily Timeline” experience.
+Guardian AI (Nexus) is an Android-first productivity + health companion designed to build **daily discipline** through a structured timeline, local reminders, and AI-assisted insights.
 
-This repository is prepared for professional review (internal/company demo) and for GitHub upload (private recommended). The notification system is intentionally **local-only** to avoid Cloud Functions requirements.
+> Source code is private. This GitHub repository is a **showcase** (screenshots + product overview).
 
-## Table of Contents
+## What this app does
 
-- Overview
-- Key Capabilities
-- Architecture
-- Notifications & Background Execution
-- Firebase Data Model
-- Local Development Setup
-- Configuration (Secrets)
-- Android Permissions & OEM Settings
-- Build & Release
-- Troubleshooting
-- Security & Privacy
-- License
+- Turns a simple daily routine into a **task timeline** you can follow.
+- Sends **local task reminders** (no cloud functions required).
+- Tracks **activity/steps** (with optional watch/BLE integration).
+- Provides **AI-powered features** (chat + food analysis).
+- Includes daily review + reporting to improve consistency over time.
 
-## Overview
+## Key Features
 
-Nexus combines:
+### Discipline & Timeline
 
-- A **Dashboard** for current metrics and “next task” countdown
-- A **Daily Timeline** generated from a plain-text schedule stored in RTDB
-- **Local notifications/alarms** to trigger task reminders reliably on-device
-- Optional integrations (watch/BLE, food logging, AI-powered analysis)
+- Daily timeline with upcoming tasks
+- Task completion tracking
+- “Next task” countdown + daily flow
 
-## Modules (Screens / Pages)
+### Smart Reminders (Local-Only)
 
-Below is a practical module map of the app. Each item corresponds to a concrete screen file.
+- Exact-time alarms (Android)
+- Local notifications for task start reminders
+- In-app notification history (tap to open the relevant screen)
 
-### Core
+### Reports & Reflection
 
-- **Dashboard** — `lib/dashboard_screen.dart`
-  - Main landing screen, realtime overview, bootstraps schedule resync and background behaviors.
-- **Daily Timeline** — `lib/daily_timeline_screen.dart`
-  - Shows today’s tasks, completion state, and timeline-driven UX.
+- Night review (end-of-day reflection)
+- Daily report / performance summary
 
-### AI
+### AI (Optional)
 
-- **AI Chat** — `lib/ai_chat_screen.dart`
-  - AI conversation flow, schedule suggestions, and chat history.
-- **AI Service** — `lib/ai_service.dart`
-  - AI request/response layer used by multiple screens.
+- AI chat for guidance / planning / motivation
+- Food logging with AI nutrition estimation from a photo (calories/macros + health rating)
 
-### Auth / Onboarding
+### Health, Sensors & Integrations (Optional)
 
-- **Sign In** — `lib/signin_screen.dart`
-- **Sign Up** — `lib/signup_screen.dart`
-- **Interview / Intake** — `lib/interview_screen.dart`
-  - Initial user intake questions and profile setup.
+- Activity/steps tracking
+- Background monitoring (optional)
+- Watch/BLE connection (device dependent)
+- Movement map (location-based view)
+- Sleep tracker screen
 
-### Reports & Review
+## Screens / Pages Included
 
-- **Night Review** — `lib/screens/night_review_screen.dart`
-  - End-of-day review for incomplete tasks and reasons.
-- **Daily Report** — `lib/screens/daily_report_screen.dart`
-  - Performance report view (daily summary + history).
+- Dashboard
+- Daily Timeline
+- AI Chat
+- Food Log
+- Food History
+- Notification History
+- Night Review
+- Daily Report
+- Settings
+- Profile
+- Watch Connection
+- Sleep Tracker
+- Movement Map
+- Smart Notes
+- Omni Guardian (guardian-style UI)
+- Sign In / Sign Up
+- Interview / Intake (onboarding)
 
-### Notifications
+## App Flow (How users typically use it)
 
-- **Notification History** — `lib/screens/notification_history_screen.dart`
-  - In-app log of recent notifications (tap to open related screens where supported).
+1) **Onboarding** → Create account → complete intake (Interview)
+2) **Plan** → Build a routine (timeline) and set your day structure
+3) **Execute** → Follow tasks through the day with reminders
+4) **Review** → Night Review + Daily Report to improve discipline
 
-### Settings & System
+## Screens (Detailed)
 
-- **Settings** — `lib/screens/settings_screen.dart`
-- **Background Service Control** — `lib/screens/background_service_screen.dart`
-  - Start/stop/status for Android foreground service.
-- **Profile** — `lib/screens/profile_screen.dart`
-- **Profile (HUDglass)** — `lib/screens/profile_screen_hudglass.dart`
-  - Alternate profile UI presentation.
+### Dashboard
 
-### Watch & Sensors
+The home screen and command center.
 
-- **Watch Connection** — `lib/watch_connection_screen.dart`
-  - BLE/device connection workflows.
-- **Movement Map** — `lib/screens/movement_map_screen.dart`
-  - Location/movement visualization.
-- **Sleep Tracker** — `lib/screens/sleep_tracker_screen.dart`
-  - Sleep tracking and sleep-related signals.
+- Shows a quick snapshot of today (progress + key metrics)
+- Highlights what’s next ("next task" focus)
+- Entry point for timeline execution, reports, and key tools
 
-### Food
+### Daily Timeline
 
-- **Food Log** — `lib/screens/food_log_screen.dart`
-  - Food entry and optional AI analysis.
-- **Food History** — `lib/screens/food_history_screen.dart`
-  - Past food records.
+The core discipline experience.
 
-### Notes
+- Displays today’s tasks in order (timeline format)
+- Helps you stay on track with the next action
+- Tracks completion status to build consistency over time
 
-- **Smart Notes** — `lib/screens/smart_notes_screen.dart`
-  - Notes + reminders (uses alarms/TTs where enabled).
+### AI Chat
 
-### Guardian / System UI
+An AI assistant for planning and guidance.
 
-- **Omni Guardian** — `lib/screens/omni_guardian_screen.dart`
-  - Guardian-style UI and system scanning visuals.
+- Chat-based help for motivation, planning, and habit improvement
+- Can support structured suggestions like routines, reminders, and next steps
 
-## Key Capabilities
+### Food Log
 
-- **Schedule → Tasks pipeline**: parses `best_ai_schedule/{userId}` into structured tasks.
-- **Task reminders (local-only)**: schedules reminders using `android_alarm_manager_plus` and `flutter_local_notifications`.
-- **Background monitoring**: Android foreground service can sync steps and trigger a low-activity warning.
-- **Night Review & Daily Report**: end-of-day workflows that can be opened from local notifications and in-app history.
-- **Watch connectivity**: BLE integration (device dependent).
+Food entry with optional AI analysis.
 
-## Architecture
+- Add a meal via photo (or manual entry)
+- AI can estimate calories/macros for the visible portion
+- Stores results so you can review your eating patterns over time
 
-High-level flow:
+### Food History
 
-```
-Realtime DB (best_ai_schedule)
-        │
-        ▼
-Timeline parsing (Vault) ─────► active_timeline/{userId}
-        │
-        ├─► LocalTaskAlarmScheduler (Android alarms)
-        │        │
-        │        └─► flutter_local_notifications (task reminder)
-        │
-        └─► Background Service (optional)
-                 └─► watch_data/{userId}/current (steps sync)
-```
+Your past meals in one place.
 
-Core modules:
+- Browse logged meals by date
+- Review past nutrition estimates and notes
 
-- UI: `lib/` (screens/widgets)
-- Services: `lib/services/` (timeline vault, alarms, notifications, background)
-- Platform: `android/` (Android configuration)
+### Notification History
 
-## Modules (Services)
+An in-app record of reminders and alerts.
 
-Services are concentrated in `lib/services/`.
+- Shows recent notifications in a timeline
+- Tap a notification to open the relevant app screen (where supported)
+- Useful when you miss a notification or want to revisit it later
 
-### Core runtime
+### Night Review
 
-- `app_navigator.dart` — app-wide navigation helper.
-- `session_service.dart` — session/user state helpers.
+End-of-day reflection to improve discipline.
 
-### Timeline + schedule
+- Helps you review what was completed vs missed
+- Capture reasons and patterns (what blocked you today)
+- Supports course-correction for tomorrow
 
-- `timeline_models.dart` — task models and day-key helpers.
-- `timeline_vault_service.dart` — reads `best_ai_schedule/{userId}` and maintains `active_timeline/{userId}`.
-- `discipline_analyzer.dart` — scoring/discipline calculations.
+### Daily Report
 
-### Notifications + alarms
+Daily performance summary.
 
-- `local_task_alarm_scheduler.dart` — schedules exact Android alarms for task start.
-- `timeline_notification_scheduler.dart` — other local notifications (Night Review, Daily Report, tactical alerts).
-- `notification_tap_router.dart` — routes notification payloads into screens.
-- `app_notification_log.dart` — persistent notification history log.
+- Shows progress summary for the day
+- Helps you understand consistency, discipline, and trends
 
-### Background + sensors
+### Settings
 
-- `background_service.dart` — Android foreground service and periodic checks.
-- `phone_activity_service.dart` — phone-side activity/steps helpers.
-- `movement_service.dart` — location/movement helpers.
-- `sleep_service.dart` — sleep-related signals.
-- `weather_service.dart` — weather-related helpers.
+Configuration and system controls.
 
-### Watch / BLE integration
+- App preferences
+- Local reminder behavior and system permissions guidance (Android)
+- Background monitoring toggles (optional)
 
-- `ble_service.dart` — BLE device communication.
-- `universal_watch_service.dart` — watch data sync abstraction.
+### Profile
 
-### Food
+Your personal configuration.
 
-- `food_service.dart` — food logging/AI integration helpers.
+- Basic user information
+- Goals and preference-style settings used across the app
 
-### Compatibility stubs
+### Watch Connection
 
-- `fcm_service.dart` — no-op stub (legacy import compatibility; FCM is not required).
-- `firebase_storage_stub.dart`, `image_picker_stub.dart`, `notification_listener_stub.dart`, `flutter_notification_listener_shim.dart` — platform/plugin compatibility shims.
+Optional device integration (BLE).
 
-## Screenshots (Per Page)
+- Connect/sync with a compatible watch or device
+- Used to support steps/activity data
 
-Add your screenshots under `docs/screenshots/` and keep filenames stable.
+### Sleep Tracker
 
-Suggested naming (PNG):
+Sleep-focused screen.
 
-- `docs/screenshots/01_dashboard.png`
-- `docs/screenshots/02_daily_timeline.png`
-- `docs/screenshots/03_ai_chat.png`
-- `docs/screenshots/04_sign_in.png`
-- `docs/screenshots/05_sign_up.png`
-- `docs/screenshots/06_interview.png`
-- `docs/screenshots/07_settings.png`
-- `docs/screenshots/08_notification_history.png`
-- `docs/screenshots/09_night_review.png`
-- `docs/screenshots/10_daily_report.png`
-- `docs/screenshots/11_food_log.png`
-- `docs/screenshots/12_food_history.png`
-- `docs/screenshots/13_watch_connection.png`
-- `docs/screenshots/14_sleep_tracker.png`
-- `docs/screenshots/15_movement_map.png`
-- `docs/screenshots/16_smart_notes.png`
-- `docs/screenshots/17_omni_guardian.png`
+- Tracks sleep-related signals and routines
+- Helps connect sleep quality with discipline and productivity
 
-You can embed them like:
+### Movement Map
 
-```md
-![Dashboard](docs/screenshots/01_dashboard.png)
-```
+Movement visualization.
 
-## Notifications & Background Execution
+- Map-based view for movement/activity
+- Helps you see patterns in location-based activity
 
-This project is intentionally designed to work **without Cloud Functions / Blaze plan**.
+### Smart Notes
 
-### Task start reminders
+Notes + reminders.
 
-- When the Dashboard opens, the app fetches the latest schedule and re-syncs alarms.
-- Each upcoming task is scheduled as an **exact one-shot Android alarm** via `android_alarm_manager_plus`.
-- When an alarm fires, a local notification is shown via `flutter_local_notifications`.
+- Create and store notes
+- Use notes for planning, journaling, or task-related reminders
 
-### Low-activity alerts
+### Omni Guardian
 
-- The background service periodically checks `watch_data/{userId}/current/steps`.
-- If steps increased by **< 500** since the last check, it triggers a quiet local alert:
-  **Guardian Alert: Low activity detected!**
+A “guardian” style UI for monitoring and alerting.
 
-### Android 12+ (Exact alarms)
+- Visual system for "guardian" insights and monitoring
+- Works alongside reminders and daily discipline workflows
 
-Android 12 may restrict exact alarms. If task notifications do not fire reliably:
+### Sign In
 
-- Settings → Apps → Special access → Alarms & reminders → allow Nexus
+Authentication screen.
 
-The app also performs a best-effort prompt to open exact-alarm settings when scheduling.
+- Login to your account
+- Secure access to your saved data
 
-## Firebase Data Model
+### Sign Up
 
-Common RTDB paths used by the app:
+Account creation.
 
-- `Users/{userId}/...` — profile/settings
-- `best_ai_schedule/{userId}` — plain-text daily schedule
-- `active_timeline/{userId}/...` — today’s pending/completed tasks
-- `watch_data/{userId}/current` — synced steps/kcal/last_updated
-- `watch_data/{userId}/history/{yyyy-MM-dd}` — daily snapshots
+- Create a new user account
+- Starts the onboarding flow
 
-## Local Development Setup (Windows)
+### Interview / Intake
 
-### Prerequisites
+First-time setup.
 
-- Flutter SDK (stable)
-- Android Studio + Android SDK
-- A physical Android device (recommended for background + alarm testing)
+- Collects initial information to personalize experience
+- Helps tailor routines and app behavior
 
-### Install dependencies
+## Tech Overview (High-Level)
 
-```powershell
-flutter pub get
-```
+- Flutter (Android-first)
+- Firebase Realtime Database (app data)
+- Local alarms + local notifications for reminders
+- Optional background service for periodic checks
 
-### Firebase setup (required)
+## Privacy
 
-1) Create a Firebase project.
-2) Add an Android app in Firebase.
-3) Download `google-services.json` and place it at:
-   - `android/app/google-services.json`
-4) Enable Realtime Database.
+- The app uses Firebase for user data storage.
+- Notifications are generated locally on-device.
 
-### Run
+## Contact / Demo
 
-```powershell
-flutter run
-```
+If you want the APK, a demo build, or a walkthrough video, add it here:
 
-## Configuration (Secrets)
-
-The repository should not contain runtime secrets.
-
-Optional Food AI keys are provided via `--dart-define`:
-
-- `IMGBB_API_KEY` (image upload)
-- `OPENROUTER_API_KEY` (vision request)
-
-Run with keys:
-
-```powershell
-flutter run --dart-define=IMGBB_API_KEY="<your_imgbb_key>" --dart-define=OPENROUTER_API_KEY="<your_openrouter_key>"
-```
-
-Note: changing `--dart-define` values requires a full restart (not hot reload).
-
-## Android Permissions & OEM Settings
-
-- Notifications: enable app notifications.
-- Android 12+: allow “Alarms & reminders” for reliable exact alarms.
-- Battery optimization: disable aggressive optimization if you want step sync + monitoring.
-- Activity recognition: required for step counting.
-- Location/Bluetooth: required for watch connectivity (device-dependent).
-
-## Build & Release
-
-### Release APK
-
-```powershell
-flutter build apk --release
-```
-
-Output:
-
-- `build/app/outputs/flutter-apk/app-release.apk`
-
-### Release checklist (recommended)
-
-- Verify alarms on Android 12+ (Alarms & reminders granted)
-- Verify background service behavior on target OEM device
-- Verify DB rules for production
-- Remove debug/demo credentials (if any)
-
-## Troubleshooting
-
-- No task notifications
-  - Confirm Android 12+ “Alarms & reminders” is allowed.
-  - Confirm app notifications are enabled.
-  - Open Dashboard once to trigger an alarm resync.
-
-- Background service running but no alerts
-  - Disable aggressive battery optimization for the app.
-  - Confirm steps are updating at `watch_data/{userId}/current/steps`.
-
-- Skipped frames in logs
-  - Common on lower-end devices in debug mode.
-  - Prefer `--release` builds for performance testing.
-
-## Security & Privacy
-
-- Never commit API keys or private credentials.
-- For public repositories, remove `android/app/google-services.json` and provide an example file instead.
-- Prefer `--dart-define` or secure storage for secrets.
-- Ensure RTDB security rules are configured before production use.
-
-## License
-
-Internal/private project. Add a license file if you plan to distribute externally.
+- Contact: `+923437782618`
 
 ---
 
-Developed by Khizar
+Developed by Khizar Lodhi
